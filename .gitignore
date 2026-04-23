@@ -1,0 +1,21 @@
+# C build files.
+*.o
+*.out
+
+# Local program files.
+baseline
+ring_allreduce
+
+# gprof output file.
+gmon.out
+
+# Crash dump files.
+core
+core.*
+
+# Python cache files.
+__pycache__/
+*.pyc
+
+# macOS Finder file. It is not project code.
+.DS_Store
