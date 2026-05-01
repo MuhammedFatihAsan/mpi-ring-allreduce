@@ -19,3 +19,6 @@ __pycache__/
 
 # macOS Finder file. It is not project code.
 .DS_Store
+
+# VS Code
+.vscode/
