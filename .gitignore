@@ -9,6 +9,11 @@ ring_allreduce
 # gprof output file.
 gmon.out
 
+# benchmark outputs
+bin/
+obj/
+results/
+
 # Crash dump files.
 core
 core.*
@@ -22,3 +27,12 @@ __pycache__/
 
 # VS Code
 .vscode/
+
+# LaTeX aux files (keep .tex and .pdf)
+*.aux
+*.log
+*.toc
+*.out
+*.synctex.gz
+*.fls
+*.fdb_latexmk

@@ -6,27 +6,12 @@
 #include <mpi.h>
 #include <math.h>
 
-/**
- * Bellek tahsisi (malloc) işlemlerini standartlaştıran fonksiyon. 
- * Verilen boyutta bir float dizisi oluşturur.
- */
 float* allocate_buffer(size_t size);
-
-/**
- * Bellek boşaltma (free) işlemlerini standartlaştıran fonksiyon. 
- */
 void free_buffer(float* data);
 
-/**
- * Her Rank için tahmin edilebilir veriler (örneğin 1.0) üretir.
- * Bu sayede toplama işleminin doğruluğu kolayca test edilebilir.
- */
+// fills with 1.0 so the expected sum after reduce is just the rank count
 void generate_dummy_data(float* data, size_t size);
 
-/**
- * İşlemlerin doğruluğunu kontrol eden mekanizma.
- * Örneğin 4 Node'lu sistemde sonucun 4.0 olup olmadığına bakar.
- */
 int verify_results(float* data, size_t size, float expected_value);
 
 #endif
