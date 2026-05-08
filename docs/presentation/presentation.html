@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ring-Allreduce — CENG342 Final Presentation</title>
+<style>
+  :root {
+    --bg: #f7f5ef;
+    --panel: #ffffff;
+    --ink: #1a1a1a;
+    --muted: #6b6b6b;
+    --line: #d9d4c7;
+    --accent: #0b5e5c;
+    --hot: #b5480f;
+    --good: #2f6b2f;
+    --bad:  #b5480f;
+    --mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", "Menlo", monospace;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: #222;
+    font-family: var(--sans);
+    color: var(--ink);
+    overflow: hidden;
+  }
+
+  .deck {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    padding: 5vh 6vw;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 100% 0%, rgba(11,94,92,0.05), transparent 40%),
+      radial-gradient(circle at 0% 100%, rgba(181,72,15,0.04), transparent 40%);
+    overflow: hidden;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+
+  /* Title slide */
+  .title-slide {
+    justify-content: center;
+    align-items: flex-start;
+    padding-left: 8vw;
+  }
+  .title-slide .kicker {
+    font-family: var(--mono);
+    color: var(--accent);
+    font-size: 1rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+  .title-slide h1 {
+    font-size: 3.8rem;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    max-width: 20ch;
+    margin-bottom: 2rem;
+  }
+  .title-slide h1 .accent { color: var(--accent); }
+  .title-slide .meta {
+    color: var(--muted);
+    font-size: 1.1rem;
+    line-height: 1.8;
+  }
+  .title-slide .meta strong { color: var(--ink); font-weight: 600; }
+  .title-slide .rule {
+    width: 80px; height: 4px;
+    background: var(--hot);
+    margin: 2rem 0 2rem 0;
+  }
+
+  /* Generic slide chrome */
+  .slide h2 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.3rem;
+  }
+  .slide h2 .part-tag {
+    font-family: var(--mono);
+    color: var(--accent);
+    font-size: 0.95rem;
+    letter-spacing: 0.12em;
+    font-weight: 500;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+  .slide .subtitle {
+    color: var(--muted);
+    font-size: 1.05rem;
+    margin-bottom: 1.5rem;
+    max-width: 80ch;
+  }
+
+  .slide p {
+    font-size: 1.1rem;
+    line-height: 1.55;
+    color: var(--ink);
+    max-width: 80ch;
+    margin-bottom: 1rem;
+  }
+
+  .slide ul {
+    font-size: 1.05rem;
+    line-height: 1.55;
+    padding-left: 1.2rem;
+    max-width: 80ch;
+  }
+  .slide ul li { margin-bottom: 0.5rem; }
+  .slide ul li::marker { color: var(--accent); }
+
+  /* Content layouts */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2.5rem;
+    flex: 1;
+    min-height: 0;
+  }
+  .col { display: flex; flex-direction: column; min-width: 0; }
+  .col h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 0.7rem;
+    font-family: var(--mono);
+    letter-spacing: 0.02em;
+  }
+
+  /* Code blocks */
+  pre {
+    background: #1d1e1a;
+    color: #eae6d8;
+    padding: 1rem 1.2rem;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    overflow: auto;
+    border-left: 3px solid var(--accent);
+  }
+  pre .kw  { color: #c7d97a; }
+  pre .ty  { color: #8ac7d4; }
+  pre .num { color: #e4a66b; }
+  pre .cm  { color: #8a8572; font-style: italic; }
+  pre .fn  { color: #f0c674; }
+  pre .str { color: #d3a85e; }
+
+  code.inline {
+    font-family: var(--mono);
+    background: rgba(11,94,92,0.1);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.95em;
+    color: var(--accent);
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.98rem;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  thead tr { background: #2a2a28; color: #f0ede3; }
+  th {
+    text-align: left;
+    padding: 0.7rem 0.95rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  td {
+    padding: 0.6rem 0.95rem;
+    border-top: 1px solid var(--line);
+    font-variant-numeric: tabular-nums;
+  }
+  td.num { text-align: right; font-family: var(--mono); }
+  tr:hover td { background: rgba(11,94,92,0.035); }
+  td.hot  { color: var(--hot); font-weight: 600; }
+  td.good { color: var(--good); font-weight: 600; }
+
+  /* Callouts */
+  .callout {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--hot);
+    padding: 0.95rem 1.2rem;
+    border-radius: 6px;
+    margin: 0.8rem 0;
+    font-size: 1rem;
+    line-height: 1.55;
+    max-width: 80ch;
+  }
+  .callout.good { border-left-color: var(--good); }
+  .callout.info { border-left-color: var(--accent); }
+  .callout strong { color: var(--accent); }
+
+  /* Stat cards */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin: 0.8rem 0;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 1.1rem 1.2rem;
+    border-radius: 6px;
+  }
+  .stat .label {
+    font-size: 0.78rem;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+  .stat .value {
+    font-size: 2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--hot);
+    line-height: 1;
+  }
+  .stat .value.good { color: var(--good); }
+  .stat .value.accent { color: var(--accent); }
+  .stat .note { font-size: 0.85rem; color: var(--muted); margin-top: 0.3rem; }
+
+  /* SVG diagrams */
+  .diagram {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 0.5rem 0;
+  }
+  .diagram img { width: 100%; max-height: 56vh; object-fit: contain; }
+
+  /* Footer */
+  .page-footer {
+    position: absolute;
+    left: 6vw; right: 6vw; bottom: 2vh;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-family: var(--mono);
+    letter-spacing: 0.05em;
+    border-top: 1px solid var(--line);
+    padding-top: 0.5rem;
+  }
+  .page-footer .brand { color: var(--accent); }
+
+  /* Nav */
+  .nav-hint {
+    position: fixed;
+    top: 14px;
+    right: 18px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    background: rgba(255,255,255,0.7);
+    padding: 4px 9px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    opacity: 0.85;
+    transition: opacity 0.3s;
+    z-index: 50;
+  }
+  .nav-hint:hover { opacity: 0.3; }
+  body.print .nav-hint, body.print .progress { display: none !important; }
+  body.print, html:has(body.print) { background: var(--bg) !important; }
+  .progress {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    background: var(--hot);
+    width: 0;
+    transition: width 0.25s;
+    z-index: 100;
+  }
+
+  /* Print to PDF: one slide per page */
+  @page { size: 297mm 210mm; margin: 0; }
+  @media print {
+    html, body { background: white; overflow: visible; height: auto; width: 297mm; }
+    .deck { height: auto; width: 297mm; }
+    .slide {
+      display: flex !important;
+      flex-direction: column !important;   /* every slide, not only .active */
+      position: relative;
+      width: 297mm;
+      height: 210mm;
+      padding: 14mm 18mm !important;       /* fixed units instead of vh/vw */
+      page-break-after: always;
+      break-after: page;
+      inset: auto;
+      overflow: hidden;
+    }
+    .slide:last-child { page-break-after: auto; }
+    .page-footer {
+      left: 18mm; right: 18mm; bottom: 8mm;  /* fixed units in print too */
+    }
+    .nav-hint, .progress { display: none !important; }
+    /* hide interactive controls in print */
+    .no-print { display: none !important; }
+    /* keep figures inside the page */
+    .diagram img { max-height: 110mm !important; }
+    .diagram svg { max-height: 110mm !important; }
+    /* kill scrollbar UI on code blocks; let lines wrap if needed */
+    pre {
+      overflow: hidden !important;
+      white-space: pre-wrap !important;
+      word-break: break-word !important;
+      font-size: 0.78rem !important;
+    }
+  }
+
+  /* Inline ring/centralized topology svg helpers */
+  .topo svg { display: block; margin: 0 auto; }
+  .topo .label { font-family: var(--mono); font-size: 12px; fill: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<div class="deck">
+
+  <section class="slide title-slide active">
+    <div class="kicker">CENG 342 · Parallel Programming I · Spring 2026</div>
+    <h1>Ring-Allreduce <span class="accent">for Distributed Gradient Synchronization</span></h1>
+    <div class="rule"></div>
+    <div class="meta">
+      <strong>Project Group 3</strong><br>
+      Muhammed Fatih Asan &nbsp;·&nbsp; Sarper Avcı &nbsp;·&nbsp; Mehmet Furkan Dalfidan<br>
+      Final Presentation — May 2026
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2><span class="part-tag">Motivation</span>The synchronization bottleneck</h2>
+    <p class="subtitle">Distributed training computes gradients on many workers and must aggregate them every iteration. The straightforward "send everything to one master" pattern stops scaling once the master saturates.</p>
+
+    <div class="two-col">
+      <div class="col">
+        <h3>Centralized reduce-broadcast</h3>
+        <div class="diagram topo">
+          <svg viewBox="0 0 240 160" width="100%" style="max-height:34vh">
+            <g font-family="var(--sans)" font-size="13" fill="#1a1a1a">
+              <circle cx="120" cy="30" r="22" fill="#fff" stroke="#0b5e5c" stroke-width="1.5"/>
+              <text x="120" y="35" text-anchor="middle">P0</text>
+              <circle cx="35"  cy="125" r="20" fill="#fff" stroke="#6b6b6b" stroke-width="1"/>
+              <text x="35" y="130" text-anchor="middle">P1</text>
+              <circle cx="92"  cy="125" r="20" fill="#fff" stroke="#6b6b6b" stroke-width="1"/>
+              <text x="92" y="130" text-anchor="middle">P2</text>
+              <circle cx="148" cy="125" r="20" fill="#fff" stroke="#6b6b6b" stroke-width="1"/>
+              <text x="148" y="130" text-anchor="middle">P3</text>
+              <circle cx="205" cy="125" r="20" fill="#fff" stroke="#6b6b6b" stroke-width="1"/>
+              <text x="205" y="130" text-anchor="middle">P4</text>
+            </g>
+            <g stroke="#b5480f" stroke-width="1.5" fill="none">
+              <line x1="42"  y1="108" x2="108" y2="48"/>
+              <line x1="92"  y1="105" x2="116" y2="52"/>
+              <line x1="148" y1="105" x2="124" y2="52"/>
+              <line x1="198" y1="108" x2="132" y2="48"/>
+            </g>
+            <text x="120" y="155" text-anchor="middle" class="label">all traffic ⟶ P0</text>
+          </svg>
+        </div>
+      </div>
+      <div class="col">
+        <h3>Why it stalls</h3>
+        <ul>
+          <li>Bytes through the master grow as <code class="inline">n · M</code>.</li>
+          <li>Master's link is fixed bandwidth — it caps the whole job.</li>
+          <li>Adding workers <em>increases</em> the synchronization cost.</li>
+        </ul>
+        <div class="callout">
+          <strong>Goal.</strong> Replace this pattern with one whose per-rank traffic stays bounded as <em>n</em> grows.
+        </div>
+      </div>
+    </div>
+    <div class="page-footer"><span>Motivation</span><span class="brand">Group 3 · Final Presentation</span></div>
+  </section>
+
+  <section class="slide">
+    <h2><span class="part-tag">Idea</span>Arrange workers in a ring</h2>
+    <p class="subtitle">Each worker talks only to its left and right neighbors. Data is partitioned and circulated; partial sums accumulate as chunks travel around. No single node ever sees all the traffic.</p>
+
+    <div class="two-col">
+      <div class="col">
+        <h3>Ring topology, n = 5</h3>
+        <div class="diagram topo">
+          <svg viewBox="0 0 240 200" width="100%" style="max-height:38vh">
+            <g font-family="var(--sans)" font-size="13" fill="#1a1a1a">
+              <circle cx="120" cy="30"  r="20" fill="#fff" stroke="#0b5e5c" stroke-width="1.5"/>
+              <text x="120" y="35" text-anchor="middle">P0</text>
+              <circle cx="40"  cy="80"  r="20" fill="#fff" stroke="#0b5e5c" stroke-width="1.5"/>
+              <text x="40" y="85" text-anchor="middle">P1</text>
+              <circle cx="70"  cy="170" r="20" fill="#fff" stroke="#0b5e5c" stroke-width="1.5"/>
+              <text x="70" y="175" text-anchor="middle">P2</text>
+              <circle cx="170" cy="170" r="20" fill="#fff" stroke="#0b5e5c" stroke-width="1.5"/>
+              <text x="170" y="175" text-anchor="middle">P3</text>
+              <circle cx="200" cy="80"  r="20" fill="#fff" stroke="#0b5e5c" stroke-width="1.5"/>
+              <text x="200" y="85" text-anchor="middle">P4</text>
+            </g>
+            <g stroke="#0b5e5c" stroke-width="2" fill="none" marker-end="url(#a)">
+              <defs>
+                <marker id="a" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#0b5e5c"/>
+                </marker>
+              </defs>
+              <path d="M 102 36  Q 70 40 55 65"/>
+              <path d="M 47 100 Q 50 145 56 158"/>
+              <path d="M 90 175 Q 120 178 152 175"/>
+              <path d="M 184 158 Q 195 130 195 100"/>
+              <path d="M 192 64  Q 175 40 138 33"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+      <div class="col">
+        <h3>Two phases</h3>
+        <ul>
+          <li><strong>Reduce-scatter.</strong> Each rank sends one chunk per step and adds the incoming chunk into its local buffer. After <em>n − 1</em> steps each rank owns the global sum of one chunk.</li>
+          <li><strong>Allgather.</strong> Same neighbor pattern, but received chunks overwrite instead of summing. After another <em>n − 1</em> steps every rank holds the full sum.</li>
+        </ul>
+        <div class="callout info">
+          <strong>Bandwidth claim.</strong> Each rank moves about <code class="inline">2(n−1)/n · M</code> bytes — bounded by <em>2M</em> regardless of <em>n</em>.
+        </div>
+      </div>
+    </div>
+    <div class="page-footer"><span>Idea</span><span class="brand">Group 3 · Final Presentation</span></div>
+  </section>
+
+  <section class="slide">
+    <h2><span class="part-tag">How it works</span>Reduce-scatter with n = 4</h2>
+    <p class="subtitle">Each row is a rank, each cell is a chunk. Shaded cells are the chunk being updated that iteration. After <em>n − 1</em> iterations, every rank owns the complete sum of exactly one chunk.</p>
+
+    <div class="diagram">
+      <svg viewBox="0 0 720 220" width="100%" style="max-height:38vh">
+        <g font-family="var(--mono)" font-size="13" fill="#6b6b6b">
+          <text x="60"  y="20">initial</text>
+          <text x="220" y="20">step 1</text>
+          <text x="380" y="20">step 2</text>
+          <text x="540" y="20">step 3 (done)</text>
+        </g>
+        <g font-family="var(--mono)" font-size="12" fill="#1a1a1a">
+          <text x="20" y="55">P0</text>
+          <text x="20" y="95">P1</text>
+          <text x="20" y="135">P2</text>
+          <text x="20" y="175">P3</text>
+        </g>
+
+
+        <g stroke="#d9d4c7" fill="#fff">
+          <g transform="translate(50,40)">
+            <rect x="0"  y="0" width="28" height="22"/>
+            <rect x="32" y="0" width="28" height="22"/>
+            <rect x="64" y="0" width="28" height="22"/>
+            <rect x="96" y="0" width="28" height="22"/>
+            <rect x="0"  y="40" width="28" height="22"/>
+            <rect x="32" y="40" width="28" height="22"/>
+            <rect x="64" y="40" width="28" height="22"/>
+            <rect x="96" y="40" width="28" height="22"/>
+            <rect x="0"  y="80" width="28" height="22"/>
+            <rect x="32" y="80" width="28" height="22"/>
+            <rect x="64" y="80" width="28" height="22"/>
+            <rect x="96" y="80" width="28" height="22"/>
+            <rect x="0"  y="120" width="28" height="22"/>
+            <rect x="32" y="120" width="28" height="22"/>
+            <rect x="64" y="120" width="28" height="22"/>
+            <rect x="96" y="120" width="28" height="22"/>
+          </g>
+        </g>
+
+        <g stroke="#d9d4c7">
+          <g transform="translate(210,40)">
+            <!-- P0: chunk 3 -->
+            <rect x="0"  y="0" width="28" height="22" fill="#fff"/>
+            <rect x="32" y="0" width="28" height="22" fill="#fff"/>
+            <rect x="64" y="0" width="28" height="22" fill="#fff"/>
+            <rect x="96" y="0" width="28" height="22" fill="rgba(11,94,92,0.18)"/>
+            <!-- P1: chunk 0 -->
+            <rect x="0"  y="40" width="28" height="22" fill="rgba(11,94,92,0.18)"/>
+            <rect x="32" y="40" width="28" height="22" fill="#fff"/>
+            <rect x="64" y="40" width="28" height="22" fill="#fff"/>
+            <rect x="96" y="40" width="28" height="22" fill="#fff"/>
+            <!-- P2: chunk 1 -->
+            <rect x="0"  y="80" width="28" height="22" fill="#fff"/>
+            <rect x="32" y="80" width="28" height="22" fill="rgba(11,94,92,0.18)"/>
+            <rect x="64" y="80" width="28" height="22" fill="#fff"/>
+            <rect x="96" y="80" width="28" height="22" fill="#fff"/>
+            <!-- P3: chunk 2 -->
+            <rect x="0"  y="120" width="28" height="22" fill="#fff"/>
+            <rect x="32" y="120" width="28" height="22" fill="#fff"/>
+            <rect x="64" y="120" width="28" height="22" fill="rgba(11,94,92,0.18)"/>
+            <rect x="96" y="120" width="28" height="22" fill="#fff"/>
+          </g>
+        </g>
+
+        <g stroke="#d9d4c7">
+          <g transform="translate(370,40)">
+            <rect x="0"  y="0" width="28" height="22" fill="#fff"/>
+            <rect x="32" y="0" width="28" height="22" fill="#fff"/>
+            <rect x="64" y="0" width="28" height="22" fill="rgba(11,94,92,0.32)"/>
+            <rect x="96" y="0" width="28" height="22" fill="#fff"/>
+
+            <rect x="0"  y="40" width="28" height="22" fill="#fff"/>
+            <rect x="32" y="40" width="28" height="22" fill="#fff"/>
+            <rect x="64" y="40" width="28" height="22" fill="#fff"/>
+            <rect x="96" y="40" width="28" height="22" fill="rgba(11,94,92,0.32)"/>
+
+            <rect x="0"  y="80" width="28" height="22" fill="rgba(11,94,92,0.32)"/>
+            <rect x="32" y="80" width="28" height="22" fill="#fff"/>
+            <rect x="64" y="80" width="28" height="22" fill="#fff"/>
+            <rect x="96" y="80" width="28" height="22" fill="#fff"/>
+
+            <rect x="0"  y="120" width="28" height="22" fill="#fff"/>
+            <rect x="32" y="120" width="28" height="22" fill="rgba(11,94,92,0.32)"/>
+            <rect x="64" y="120" width="28" height="22" fill="#fff"/>
+            <rect x="96" y="120" width="28" height="22" fill="#fff"/>
+          </g>
+        </g>
+
+        <g stroke="#d9d4c7">
+          <g transform="translate(530,40)">
+            <rect x="0"  y="0" width="28" height="22" fill="#fff"/>
+            <rect x="32" y="0" width="28" height="22" fill="rgba(11,94,92,0.55)"/>
+            <rect x="64" y="0" width="28" height="22" fill="#fff"/>
+            <rect x="96" y="0" width="28" height="22" fill="#fff"/>
+
+            <rect x="0"  y="40" width="28" height="22" fill="#fff"/>
+            <rect x="32" y="40" width="28" height="22" fill="#fff"/>
+            <rect x="64" y="40" width="28" height="22" fill="rgba(11,94,92,0.55)"/>
+            <rect x="96" y="40" width="28" height="22" fill="#fff"/>
+
+            <rect x="0"  y="80" width="28" height="22" fill="#fff"/>
+            <rect x="32" y="80" width="28" height="22" fill="#fff"/>
+            <rect x="64" y="80" width="28" height="22" fill="#fff"/>
+            <rect x="96" y="80" width="28" height="22" fill="rgba(11,94,92,0.55)"/>
+
+            <rect x="0"  y="120" width="28" height="22" fill="rgba(11,94,92,0.55)"/>
+            <rect x="32" y="120" width="28" height="22" fill="#fff"/>
+            <rect x="64" y="120" width="28" height="22" fill="#fff"/>
+            <rect x="96" y="120" width="28" height="22" fill="#fff"/>
+          </g>
+        </g>
+
+        <line x1="50" y1="200" x2="660" y2="200" stroke="#1a1a1a" stroke-width="1" marker-end="url(#tarr)"/>
+        <defs>
+          <marker id="tarr" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#1a1a1a"/>
+          </marker>
+        </defs>
+        <text x="350" y="215" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="#6b6b6b">time</text>
+      </svg>
+    </div>
+
+    <p>Allgather then runs the same neighbor pattern for another <em>n − 1</em> steps, propagating fully-summed chunks around the ring without further addition.</p>
+    <div class="page-footer"><span>How it works</span><span class="brand">Group 3 · Final Presentation</span></div>
+  </section>
+
+  <section class="slide">
+    <h2><span class="part-tag">Implementation</span>Sendrecv-based loop in C</h2>
+    <p class="subtitle">Each step performs a paired send-and-receive in one MPI call. <code class="inline">MPI_Sendrecv</code> guarantees no deadlock when every rank is sending to its right neighbor at the same time.</p>
+
+    <div class="two-col">
+      <div class="col">
+        <h3>Reduce-scatter — src/ring_allreduce.c</h3>
+<pre><span class="kw">for</span> (<span class="ty">int</span> step = <span class="num">0</span>; step &lt; size - <span class="num">1</span>; step++) {
+    <span class="ty">int</span> send_chunk = (rank - step + size) % size;
+    <span class="ty">int</span> recv_chunk = (rank - step - <span class="num">1</span> + size) % size;
+
+    <span class="cm">// chunk-layout helpers handle ragged divisions</span>
+    <span class="ty">size_t</span> ss = get_chunk_start(count, size, send_chunk);
+    <span class="ty">size_t</span> sc = get_chunk_size (count, size, send_chunk);
+    <span class="ty">size_t</span> rs = get_chunk_start(count, size, recv_chunk);
+    <span class="ty">size_t</span> rc = get_chunk_size (count, size, recv_chunk);
+
+    <span class="fn">MPI_Sendrecv</span>(data + ss, sc, MPI_FLOAT, right, <span class="num">0</span>,
+                 temp_buffer, rc, MPI_FLOAT, left,  <span class="num">0</span>,
+                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    <span class="kw">for</span> (<span class="ty">size_t</span> i = <span class="num">0</span>; i &lt; rc; i++)
+        data[rs + i] += temp_buffer[i];
+}</pre>
+      </div>
+      <div class="col">
+        <h3>Design notes</h3>
+        <ul>
+          <li><strong>Ragged divisions.</strong> When <code class="inline">M % n ≠ 0</code>, the leading ranks each carry one extra element. Helpers compute chunk start and size from any rank consistently.</li>
+          <li><strong>Deadlock-free.</strong> <code class="inline">Sendrecv</code> matches one send to one receive atomically — no need to interleave non-blocking calls.</li>
+          <li><strong>Two timings.</strong> Communication-only (between barriers around the loops) and setup+communication (includes neighbor-index computation and the temp buffer allocation).</li>
+          <li><strong>Verification.</strong> All ranks initialize the array to <em>1.0</em>; the expected post-reduction value is exactly <em>n</em>.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="page-footer"><span>Implementation</span><span class="brand">Group 3 · Final Presentation</span></div>
+  </section>
+
+  <section class="slide">
+    <h2><span class="part-tag">Experimental setup</span>Single-machine sweep</h2>
+    <p class="subtitle">All experiments run on one laptop. No physical cluster. Communication goes over OpenMPI's shared-memory transport.</p>
+
+    <div class="two-col">
+      <div class="col">
+        <h3>System</h3>
+        <table>
+          <tbody>
+            <tr><td>CPU</td><td class="num">AMD Ryzen 5 5500U</td></tr>
+            <tr><td>Cores · threads</td><td class="num">6 · 12</td></tr>
+            <tr><td>Memory</td><td class="num">14 GB</td></tr>
+            <tr><td>OS</td><td class="num">Ubuntu 22.04.5 LTS</td></tr>
+            <tr><td>Kernel</td><td class="num">6.8.0-110</td></tr>
+            <tr><td>MPI</td><td class="num">OpenMPI 4.1.2</td></tr>
+            <tr><td>Compiler</td><td class="num">GCC 11.4 (-O3)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col">
+        <h3>Sweep</h3>
+        <ul>
+          <li><strong>Ranks:</strong> 2, 4, 8, 16 (16 oversubscribes the 12-thread host).</li>
+          <li><strong>Sizes:</strong> 6 array sizes log-spaced from 256 KB to ~100 MB (64 K to 26.2 M float elements). Smaller payloads were excluded — at those sizes MPI latency and OS jitter dominate the wall-clock budget, masking the bandwidth properties we want to measure.</li>
+          <li><strong>Runs per config:</strong> 1 warmup discarded, 5 timed; median reported.</li>
+          <li><strong>Total admitted points:</strong> 4 × 6 × 2 × 5 = 240.</li>
+          <li><strong>Timing:</strong> <code class="inline">MPI_Wtime</code> on rank 0, fenced by <code class="inline">MPI_Barrier</code> at both ends.</li>
+        </ul>
+        <div class="callout info">
+          Every admitted run reports <strong>Verification: PASS</strong>. No incorrect reductions are present in the dataset.
+        </div>
+      </div>
+    </div>
+    <div class="page-footer"><span>Setup</span><span class="brand">Group 3 · Final Presentation</span></div>
+  </section>
+
+  <section class="slide">
+    <h2><span class="part-tag">Results</span>Communication time vs. array size</h2>
+    <p class="subtitle">Median of 5 timed runs per configuration. Both axes log-scaled. The baseline curve sits above the ring curve at every measured payload — the vertical gap on a log–log plot is the speedup factor.</p>
+
+    <div class="diagram">
+      <img id="img-compare" src="../../results/plots/compare_np8.png" alt="Communication time, np=8">
+    </div>
+    <div class="callout no-print">
+      Switch shown rank count with the small toggle below — the qualitative picture is the same at every <em>n</em> ≥ 4.
+    </div>
+    <div class="no-print" style="display:flex; gap: 0.5rem; margin-top: 0.4rem;">
+      <button onclick="setNp(2)"  style="font-family:var(--mono); padding:0.4rem 0.9rem; border:1px solid var(--line); background:#fff; border-radius:4px; cursor:pointer;">np = 2</button>
+      <button onclick="setNp(4)"  style="font-family:var(--mono); padding:0.4rem 0.9rem; border:1px solid var(--line); background:#fff; border-radius:4px; cursor:pointer;">np = 4</button>
+      <button onclick="setNp(8)"  style="font-family:var(--mono); padding:0.4rem 0.9rem; border:1px solid var(--line); background:#fff; border-radius:4px; cursor:pointer;">np = 8</button>
+      <button onclick="setNp(16)" style="font-family:var(--mono); padding:0.4rem 0.9rem; border:1px solid var(--line); background:#fff; border-radius:4px; cursor:pointer;">np = 16</button>
+    </div>
+    <div class="page-footer"><span>Results · time vs. size</span><span class="brand">Group 3 · Final Presentation</span></div>
+  </section>
+
+  <section class="slide">
+    <h2><span class="part-tag">Results</span>Ring speedup over the baseline</h2>
+    <p class="subtitle">Speedup = baseline median / ring median, at the same configuration. Above the dotted line means ring is faster. Every curve sits above the line across the entire swept range — peak speedup ≈ 3.7× at <em>n</em> = 4.</p>
+
+    <div class="diagram">
+      <img src="../../results/plots/speedup.png" alt="Ring speedup over baseline">
+    </div>
+    <div class="page-footer"><span>Results · speedup</span><span class="brand">Group 3 · Final Presentation</span></div>
+  </section>
+
+  <section class="slide" id="slide-table">
+    <h2><span class="part-tag">Results</span>Headline numbers</h2>
+    <p class="subtitle">Three representative array sizes per rank count: small (64 K elements ≈ 256 KB), medium (1 M elements ≈ 4 MB), large (26 M elements ≈ 100 MB). All times are medians in seconds. Ring wins at every configuration listed.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>n</th>
+          <th>size (elements)</th>
+          <th style="text-align:right">baseline (s)</th>
+          <th style="text-align:right">ring (s)</th>
+          <th style="text-align:right">speedup</th>
+        </tr>
+      </thead>
+      <tbody id="summary-tbody">
+      </tbody>
+    </table>
+    <div class="page-footer"><span>Results · table</span><span class="brand">Group 3 · Final Presentation</span></div>
+  </section>
+
+  <section class="slide">
+    <h2><span class="part-tag">Profiling</span>gprof confirms it's communication-bound</h2>
+    <p class="subtitle">A separate <code class="inline">make profile</code> build (compiled with <code class="inline">-O0 -pg</code> so helpers don't get inlined away) generates <code class="inline">gmon.out</code>. <code class="inline">gprof</code> then attributes time to user-level symbols.</p>
+
+    <div class="two-col">
+      <div class="col">
+        <h3>What we measured</h3>
+        <ul>
+          <li>Run on the largest sweep size so the 10 ms sampler has work to attribute.</li>
+          <li>User-level helpers (<code class="inline">get_chunk_size</code>, <code class="inline">get_chunk_start</code>, <code class="inline">verify_results</code>, …) account for a negligible share of total time.</li>
+          <li>Almost all wall-clock time is consumed inside MPI library calls, where <code class="inline">gprof</code> does not sample.</li>
+        </ul>
+        <div class="callout good">
+          <strong>Takeaway.</strong> The application is communication-bound. Optimization effort would have to target the MPI implementation or the transport, not the user loop bodies.
+        </div>
+      </div>
+      <div class="col">
+        <h3>gprof, ring binary, n=4, 16 MB</h3>
+<pre><span class="cm">Each sample counts as 0.01 seconds.</span>
+  %    cumulative   self           self
+ time   seconds   seconds  calls   ms/call  name
+57.14      0.04      0.04                   <span class="fn">main</span>
+42.86      0.07      0.03      1   30.00    <span class="fn">generate_dummy_data</span>
+ 0.00      0.07      0.00     13    0.00    get_chunk_size
+ 0.00      0.07      0.00     12    0.00    get_chunk_start
+ 0.00      0.07      0.00      4    0.00    get_current_time
+ 0.00      0.07      0.00      2    0.00    allocate_buffer
+ 0.00      0.07      0.00      2    0.00    calculate_elapsed_time
+ 0.00      0.07      0.00      2    0.00    free_buffer</pre>
+      </div>
+    </div>
+    <div class="page-footer"><span>Profiling</span><span class="brand">Group 3 · Final Presentation</span></div>
+  </section>
+
+  <section class="slide">
+    <h2><span class="part-tag">Conclusion</span>What the four parts tell us, together</h2>
+
+    <div class="two-col">
+      <div class="col">
+        <div class="callout info">
+          <strong>Correctness.</strong> Every admitted run passes verification, including ragged divisions where <code class="inline">M % n ≠ 0</code>.
+        </div>
+        <div class="callout info">
+          <strong>Ring wins everywhere.</strong> Across the swept range (256 KB → 100 MB) and every rank count from 2 to 16, ring is faster than the baseline. Speedups range from 1.26× to 3.71×.
+        </div>
+      </div>
+      <div class="col">
+        <div class="callout info">
+          <strong>Bandwidth claim, observed.</strong> Per-rank bytes for the ring stay bounded; the baseline's per-rank bytes scale with <em>n</em>. The measured curves match the predicted shape.
+        </div>
+        <div class="callout info">
+          <strong>Limitation.</strong> Single-machine, shared-memory transport. The qualitative scaling is preserved but absolute throughput numbers do not represent a real cluster.
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="border-left-color: var(--hot); margin-top: 0.6rem;">
+      <strong>Bottom line.</strong> Ring-Allreduce delivers the predicted asymptotic advantage on a hobby-grade machine. The same code, recompiled against a real interconnect, is what production frameworks (Horovod, NCCL) ship today.
+    </div>
+    <div class="page-footer"><span>Conclusion</span><span class="brand">Group 3 · Final Presentation</span></div>
+  </section>
+
+  <section class="slide title-slide">
+    <div class="kicker">End · Questions welcome</div>
+    <h1>Thank you.</h1>
+    <div class="rule"></div>
+    <div class="meta">
+      Project Group 3<br>
+      CENG 342 · Final Presentation · May 2026
+    </div>
+  </section>
+
+</div>
+
+<div class="nav-hint">← →  |  space  |  home / end</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const progress = document.getElementById('progress');
+  let idx = 0;
+
+  function show(i) {
+    idx = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((s, n) => s.classList.toggle('active', n === idx));
+    progress.style.width = (100 * (idx + 1) / slides.length) + '%';
+    history.replaceState(null, '', '#' + (idx + 1));
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { show(idx + 1); e.preventDefault(); }
+    else if (['ArrowLeft', 'PageUp'].includes(e.key))    { show(idx - 1); e.preventDefault(); }
+    else if (e.key === 'Home')                           { show(0); }
+    else if (e.key === 'End')                            { show(slides.length - 1); }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('a, button, pre')) return;
+    const w = window.innerWidth;
+    if (e.clientX > w / 2) show(idx + 1); else show(idx - 1);
+  });
+
+  if (location.search.includes('print')) document.body.classList.add('print');
+
+  const initial = parseInt(location.hash.replace('#',''), 10);
+  if (!isNaN(initial) && initial >= 1 && initial <= slides.length) show(initial - 1);
+  else show(0);
+
+  function setNp(n) {
+    document.getElementById('img-compare').src = `../../results/plots/compare_np${n}.png`;
+  }
+
+  const SUMMARY = [
+    { np: 2,  count: 65536,    base: 0.000454, ring: 0.000163, speedup: 2.79 },
+    { np: 2,  count: 1048576,  base: 0.008379, ring: 0.004408, speedup: 1.90 },
+    { np: 2,  count: 26214400, base: 0.236028, ring: 0.112842, speedup: 2.09 },
+    { np: 4,  count: 65536,    base: 0.001051, ring: 0.000283, speedup: 3.71 },
+    { np: 4,  count: 1048576,  base: 0.026485, ring: 0.011185, speedup: 2.37 },
+    { np: 4,  count: 26214400, base: 0.664854, ring: 0.253684, speedup: 2.62 },
+    { np: 8,  count: 65536,    base: 0.002075, ring: 0.001039, speedup: 2.00 },
+    { np: 8,  count: 1048576,  base: 0.028757, ring: 0.013322, speedup: 2.16 },
+    { np: 8,  count: 26214400, base: 0.740751, ring: 0.578250, speedup: 1.28 },
+    { np: 16, count: 65536,    base: 0.004884, ring: 0.002784, speedup: 1.75 },
+    { np: 16, count: 1048576,  base: 0.064428, ring: 0.037238, speedup: 1.73 },
+    { np: 16, count: 26214400, base: 1.464350, ring: 1.166075, speedup: 1.26 },
+  ];
+  const tbody = document.getElementById('summary-tbody');
+  SUMMARY.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${row.np}</td>
+      <td class="num">${row.count.toLocaleString()}</td>
+      <td class="num">${row.base.toFixed(6)}</td>
+      <td class="num">${row.ring.toFixed(6)}</td>
+      <td class="num ${row.speedup >= 1 ? 'good' : 'hot'}">${row.speedup.toFixed(2)}×</td>
+    `;
+    tbody.appendChild(tr);
+  });
+</script>
+
+</body>
+</html>
