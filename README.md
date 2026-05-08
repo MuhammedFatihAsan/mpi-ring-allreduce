@@ -22,3 +22,9 @@ The project uses OpenMPI, MPI_Wtime, and gprof.
 ## Run Plan
 
 Build and run commands will be added with the project code.
+
+## Documents
+
+- [Checkpoint Report](https://github.com/user-attachments/files/27529098/GROUP3_CHECKPOINT_REPORT.pdf)
+- [Final Report](https://github.com/user-attachments/files/27529116/final_report.pdf)
+- [Presentation](https://github.com/user-attachments/files/27529101/presentation.pdf)
