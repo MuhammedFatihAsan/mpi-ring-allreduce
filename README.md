@@ -201,19 +201,6 @@ The measured speedup is from `1.26x` to `3.71x`.
 The largest tested array has about 100 MB of float data. In that test, the ring
 method still gives a clear speedup.
 
-## Documents
-
-Local project documents:
-
-- `docs/checkpoint_report/checkpoint_report.tex`
-- `docs/final_report/final_report.tex`
-- `docs/presentation/presentation.html`
-
-Uploaded documents:
-
-- [Checkpoint Report](https://github.com/user-attachments/files/27529098/GROUP3_CHECKPOINT_REPORT.pdf)
-- [Final Report](https://github.com/user-attachments/files/27529116/final_report.pdf)
-- [Presentation](https://github.com/user-attachments/files/27529101/presentation.pdf)
 
 ## Team
 
